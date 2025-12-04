@@ -1,11 +1,12 @@
 #:project utils
 
 using Utils;
+
 var line = Utilities.GetInput()[0];
 var answerOne = line.SolutionOne();
+Console.WriteLine($"Solution One: {answerOne}");
 var answerTwo = line.SolutionTwo();
-//Console.WriteLine(answerOne);
-Console.WriteLine(answerTwo);
+Console.WriteLine($"Solution Two: {answerTwo}");
 
 
 
@@ -14,99 +15,43 @@ readonly record struct ProductId(long Value)
     public static implicit operator long(ProductId value) => value.Value;
     public static implicit operator ProductId(long value) => new(value);
 }
-
 readonly record struct ProductRange(ProductId StartingId, ProductId EndingId);
-
-
 static class Extensions
 {
     extension(string line)
     {
+        public long SolutionOne() => line.AsRanges().Select(range => range.GetAllProductIds().FindRepetitions(p =>
+            p.Value.ToString() is string strId
+                && strId.Length % 2 == 0
+                && strId[..(strId.Length / 2)] == strId[(strId.Length / 2)..]
+            ? p.Value
+            : 0
+        )).Sum();
 
-        public long SolutionTwo()
+        public long SolutionTwo() => line.AsRanges().Select(range => range.GetAllProductIds().FindRepetitions(pId =>
         {
-            long productIdSum = 0;
-            foreach (var range in line.AsRanges())
+            string strId = pId.Value.ToString();
+            var maxWindowSize = strId.Length / 2;
+            var isInvalid = false;
+            while (maxWindowSize > 0)
             {
-                foreach (var productId in range.GetAllProductIds())
+                var chunks = strId.Chunk(maxWindowSize);
+                var first = new string(chunks.ElementAt(0));
+                if (chunks.All(c => new string(c) == first))
                 {
-                    string strId = productId.Value.ToString();
-
-                    var maxWindowSize = strId.Length / 2;
-                    Console.WriteLine($"Item: {strId}");
-                    var isInvalid = true;
-
-                    while (maxWindowSize > 0)
-                    {
-                        var possibleItemsCount = strId.Length / maxWindowSize;
-                        Console.WriteLine($"WindowSize: {maxWindowSize}");
-                        //Console.WriteLine($"PossibleItemCounts: {possibleItemsCount}");
-                        if (strId.Length - (maxWindowSize * possibleItemsCount) < 0)
-                        {
-                            isInvalid = false;
-                            break;
-                        }
-                        var first = strId[..maxWindowSize];
-                        Console.WriteLine($"First: {first}");
-                        for (int offset = 0; offset <= possibleItemsCount; offset++)
-                        {
-                            var current = offset == 0
-                                        ? strId[..maxWindowSize]
-                                        : strId[(maxWindowSize * (offset - 1))..(maxWindowSize * offset)];
-
-                            Console.WriteLine($"offset: {offset}");
-                            Console.WriteLine($"Current: {current}");
-                            if (!first.Equals(current, StringComparison.InvariantCultureIgnoreCase) )
-                            {
-                                //Console.WriteLine($"Is not equal dawg");
-                                isInvalid = false;
-                                break;
-                            }
-                        }
-                        
-                        if (isInvalid)
-                        {
-                            Console.WriteLine($"ProductId: {productId} is invalid");
-                            productIdSum += productId;
-                        }
-                        maxWindowSize--;
-                    }
-
-
-
-                    //2121212121
-                    //2121212124
+                    isInvalid = true;
+                    break;
                 }
-            }
-            return productIdSum;
-        }
 
-        public long SolutionOne()
-        {
-            long productIdSum = 0;
-            foreach (var range in line.AsRanges())
-            {
-                foreach (var productId in range.GetAllProductIds())
-                {
-                    string strId = productId.Value.ToString();
-
-                    if (strId.Length % 2 == 0)
-                    {
-                        var mid = strId.Length / 2;
-                        var firstHalf = strId[..mid];
-                        var lastHalf = strId[mid..];
-                        //Console.WriteLine(firstHalf);
-                        //Console.WriteLine(lastHalf);
-                        if (firstHalf == lastHalf)
-                        {
-                            //Console.WriteLine($"Buffer: {productId.Value} is repeated:");
-                            productIdSum += productId;
-                        }
-                    }
-                }
+                maxWindowSize--;
             }
-            return productIdSum;
+
+            if (isInvalid)
+                return pId.Value;
+            else
+                return 0;
         }
+        )).Sum();
 
         private List<ProductRange> AsRanges()
         {
@@ -128,6 +73,22 @@ static class Extensions
         {
             for (long i = range.StartingId; i <= range.EndingId; i++)
                 yield return i;
+        }
+    }
+
+    extension(IEnumerable<ProductId> productIds)
+    {
+        public long FindRepetitions(Func<ProductId, long> repetitionFinder)
+        {
+
+            long repetitionCount = 0;
+
+            foreach (var productId in productIds)
+            {
+                repetitionCount += repetitionFinder(productId);
+            }
+
+            return repetitionCount;
         }
     }
 }
